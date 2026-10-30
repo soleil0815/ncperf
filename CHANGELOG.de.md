@@ -4,6 +4,19 @@
 
 Alle wichtigen Änderungen an ncperf. Versionsnummern nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## 1.3.1 – 2026-10-30
+
+### Behoben
+- Native Installationen (z.B. Synology Web Station): Fehlt OPcache nur auf der Kommandozeile, gilt das nicht mehr als kritisch – für Cron ist es unwichtig, den Web-Status zeigt `-t TOKEN`.
+- Vorschläge liegen nie unter den aktuellen Werten (z.B. `memory_limit`, `apc.shm_size`, OPcache-Größen).
+- `pm.max_children` wird mit mindestens 100 MB je Prozess unter Last gerechnet und auf 8 je CPU-Kern begrenzt (vorher bis 200).
+- Vorschlag für `innodb_buffer_pool_size` bei 8 GB RAM oder mehr mindestens 512 MB.
+
+### Neu
+- Erkennt die PHP-Version der PHP-FPM-Prozesse (z.B. `php-fpm85`) und warnt, wenn die Kommandozeile eine andere Version nutzt.
+- Klare Meldung, wenn der Platzhalter aus der Anleitung (`DEINTOKEN`/`YOURTOKEN`) als Token benutzt wird.
+- Synology-Hinweis nennt die erkannte PHP-Version statt fest `php84`.
+
 ## 1.3.0 – 2026-10-30
 
 ### Neu

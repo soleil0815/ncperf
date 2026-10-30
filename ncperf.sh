@@ -8,7 +8,7 @@
 #
 #  Usage / Aufruf:   sudo sh ncperf.sh [options]      ->  sh ncperf.sh --help
 # =============================================================================
-VERSION="1.3.0"
+VERSION="1.3.1"
 
 CONTAINER=""; NCPATH=""; URL=""; PHPBIN=""; DISKTEST=0; TOKEN="${NCPERF_TOKEN:-}"
 REPORT="ncperf_$(date +%Y%m%d_%H%M).txt"; RUNS=5
@@ -347,8 +347,13 @@ if [ -n "$TOKEN" ]; then
       200) { printf '<?php\n$raw = <<<'"'"'NCPCJSONEND'"'"'\n'; cat "$TMP/si.json"; printf '\nNCPCJSONEND;\n'; cat "$TMP/webparse.php"; } \
              | run_php >> "$TMP/data" 2>/dev/null
            [ -n "$(v web.error)" ] && webmsg "Web-Werte nicht auswertbar: Antwort enthält keine PHP-Daten." "Web values not usable: response contains no PHP data." ;;
-      401|403) webmsg "Serverinfo lehnt das Token ab – Token prüfen (occ config:app:get serverinfo token)." \
+      401|403) case "$TOKEN" in
+                 DEINTOKEN|YOURTOKEN|TOKEN|GEHEIM|DEIN_TOKEN|YOUR_TOKEN)
+                   webmsg "'$TOKEN' ist der Platzhalter aus der Anleitung – dein echtes Token angeben (occ config:app:get serverinfo token)." \
+                          "'$TOKEN' is the placeholder from the docs – use your real token (occ config:app:get serverinfo token)." ;;
+                 *) webmsg "Serverinfo lehnt das Token ab – Token prüfen (occ config:app:get serverinfo token)." \
                       "Serverinfo rejected the token – check it (occ config:app:get serverinfo token)." ;;
+               esac ;;
       404) webmsg "Serverinfo-App nicht gefunden – aktivieren mit: occ app:enable serverinfo" \
                   "Serverinfo app not found – enable it with: occ app:enable serverinfo" ;;
       000|'') webmsg "Serverinfo unter $URL nicht erreichbar (URL mit -u prüfen)." "Serverinfo not reachable at $URL (check URL with -u)." ;;
@@ -645,7 +650,10 @@ else
   if [ "$CLIML" != "-1" ] && [ "$CLIML" -lt 512 ]; then
     warn "memory_limit = $CMLS" "memory_limit = $CMLS" "PHP memory_limit auf 512M (oder mehr) setzen." "Set PHP memory_limit to 512M (or more)."
   else ok "memory_limit = $CMLS" "memory_limit = $CMLS"; fi
-  if ! is_on "$(v ext.Zend_OPcache)"; then crit "OPcache nicht geladen" "OPcache not loaded" \
+  if ! is_on "$(v ext.Zend_OPcache)" && [ -z "$CONTAINER" ]; then
+    info "OPcache ist in der Kommandozeile nicht geladen – für Cron unwichtig. Ob OPcache im Webserver aktiv ist, zeigt nur der Aufruf mit -t TOKEN." \
+         "OPcache is not loaded on the command line – irrelevant for cron. Whether OPcache is active in the web server is only shown with -t TOKEN."
+  elif ! is_on "$(v ext.Zend_OPcache)"; then crit "OPcache nicht geladen" "OPcache not loaded" \
     "OPcache aktivieren – größter Einzel-Performancegewinn für PHP." "Enable OPcache – the biggest single performance gain for PHP."
   elif [ -n "$CONTAINER" ] || is_on "$(v ini.opcache.enable)"; then
     OM=$(v ini.opcache.memory_consumption); OI=$(v ini.opcache.interned_strings_buffer); OF=$(v ini.opcache.max_accelerated_files)
@@ -678,8 +686,26 @@ FPMR=0
 while read -r PNAME PN PAVG; do
   [ -z "$PNAME" ] && continue
   info "Prozesse $PNAME: $PN, Ø $((PAVG/1024)) MB RAM" "Processes $PNAME: $PN, avg $((PAVG/1024)) MB RAM"
-  case "$PNAME" in php-fpm*) FPMR=$PAVG ;; esac
+  case "$PNAME" in php-fpm*) FPMR=$PAVG
+    FV=$(printf '%s' "$PNAME" | sed -n 's/^php-fpm\([0-9]\)\.\{0,1\}\([0-9]\{1,2\}\)$/\1.\2/p')
+    [ -n "$FV" ] && FPMVS="${FPMVS:+$FPMVS }$FV" ;;
+  esac
 done < "$TMP/procs"
+CPVMM=$(v php.version); CPVMM=${CPVMM%.*}
+if [ "$HAVEWEB" = 0 ] && [ -n "${FPMVS:-}" ]; then
+  case " $FPMVS " in
+    *" $CPVMM "*) ;;
+    *) case "$FPMVS" in
+         *" "*) warn "PHP-FPM läuft mit PHP $FPMVS, die Kommandozeile mit PHP $CPVMM" "PHP-FPM runs PHP $FPMVS, the command line PHP $CPVMM" \
+                     "Prüfen, welches PHP dein Nextcloud-Profil nutzt (-t TOKEN zeigt es), und Cron/occ/ncperf mit derselben Version starten (--php)." \
+                     "Check which PHP your Nextcloud profile uses (-t TOKEN shows it) and run cron/occ/ncperf with the same version (--php)." ;;
+         *) FVN=$(printf '%s' "$FPMVS" | tr -d .)
+            warn "Webserver nutzt offenbar PHP $FPMVS (php-fpm$FVN), die Kommandozeile PHP $CPVMM" "Web server apparently uses PHP $FPMVS (php-fpm$FVN), the command line PHP $CPVMM" \
+                 "Cron/occ und ncperf mit derselben Version starten (Synology: --php /usr/local/bin/php$FVN, Debian/Ubuntu: php$FPMVS)." \
+                 "Run cron/occ and ncperf with the same version (Synology: --php /usr/local/bin/php$FVN, Debian/Ubuntu: php$FPMVS)." ;;
+       esac ;;
+  esac
+fi
 inx 'for f in /etc/php/*/fpm/pool.d/*.conf /usr/local/etc/php-fpm.d/*.conf /etc/php-fpm.d/*.conf /etc/php*/php-fpm.d/*.conf /usr/local/etc/php*/php-fpm.d/*.conf; do [ -f "$f" ] && grep -hE "^[[:space:]]*pm(\.[a-z_]+)?[[:space:]]*=" "$f"; done' > "$TMP/pool" 2>/dev/null
 if [ -s "$TMP/pool" ]; then
   PMM=$(awk -F= '$1~/^[ \t]*pm[ \t]*$/{gsub(/[ \t]/,"",$2);x=$2}END{print x}' "$TMP/pool")
@@ -808,18 +834,24 @@ fi
 section "Passende Werte für dieses System (${RAM} MB RAM, $CORES Kerne)" "Suggested values for this system (${RAM} MB RAM, $CORES cores)"
 DBLOCAL=1
 case "$(v cfg.dbhost)" in ""|localhost*|127.0.0.1*|/*) ;; *) [ -z "$CONTAINER" ] && DBLOCAL=0 ;; esac
-if [ "$FPMR" -gt 0 ]; then PER=$((FPMR/1024)); else PER=80; fi
-[ "$PER" -lt 40 ] && PER=40
+# Leerlauf-RSS unterschätzt die Last: mind. 100 MB je Prozess ansetzen / idle RSS underestimates load
+PER=$((FPMR/1024)); [ "$PER" -lt 100 ] && PER=100
 if [ "$DBLOCAL" = 1 ]; then SHARE=40; else SHARE=60; fi
-CH=$((RAM*SHARE/100/PER)); [ "$CH" -lt 4 ] && CH=4; [ "$CH" -gt 200 ] && CH=200
+CMAX=$((CORES*8)); [ "$CMAX" -lt 16 ] && CMAX=16
+CH=$((RAM*SHARE/100/PER)); [ "$CH" -lt 4 ] && CH=4; [ "$CH" -gt "$CMAX" ] && CH=$CMAX
 SS=$((CH/4)); [ "$SS" -lt 2 ] && SS=2
 MS=$((CH/2)); [ "$MS" -lt 4 ] && MS=4
-if [ "$RAM" -le 2048 ]; then OPM=128; OPI=16; APC=32M; RMX=128
-elif [ "$RAM" -le 8192 ]; then OPM=256; OPI=32; APC=64M; RMX=256
-else OPM=512; OPI=64; APC=128M; RMX=512; fi
+if [ "$RAM" -le 2048 ]; then OPM=128; OPI=16; APCN=32; RMX=128
+elif [ "$RAM" -le 8192 ]; then OPM=256; OPI=32; APCN=64; RMX=256
+else OPM=512; OPI=64; APCN=128; RMX=512; fi
+# aktuelle Werte nie nach unten vorschlagen / never suggest less than the current value
+maxof() { if is_num "$2" && [ "$2" -gt "$1" ]; then echo "$2"; else echo "$1"; fi; }
+if [ "$HAVEWEB" = 1 ]; then CML=$(v web.memory_limit_mb); COM=$(v web.opcache.mem_mb); COI=$(v web.opcache.str_mb); CAP=$(v web.apcu.mb)
+else CML=$CLIML; COM=$(v ini.opcache.memory_consumption); COI=$(v ini.opcache.interned_strings_buffer); CAP=$(to_mb "$(v ini.apc.shm_size)"); fi
+SML=$(maxof 512 "$CML"); OPM=$(maxof "$OPM" "$COM"); OPI=$(maxof "$OPI" "$COI"); APCN=$(maxof "$APCN" "$CAP")
 cat <<EOF
   $(m "PHP (php.ini bzw. bei Synology: Web Station › PHP-Profil):" "PHP (php.ini or on Synology: Web Station › PHP profile):")
-    memory_limit = 512M
+    memory_limit = ${SML}M
     opcache.enable = 1
     opcache.memory_consumption = $OPM
     opcache.interned_strings_buffer = $OPI
@@ -828,10 +860,10 @@ cat <<EOF
     opcache.save_comments = 1
     opcache.jit = 1255
     opcache.jit_buffer_size = 64M
-    apc.shm_size = $APC
+    apc.shm_size = ${APCN}M
     apc.enable_cli = 1
 
-  $(m "PHP-FPM (Pool www.conf), Annahme ${PER} MB je Prozess, ${SHARE}% des RAM für PHP:" "PHP-FPM (pool www.conf), assuming ${PER} MB per process, ${SHARE}% of RAM for PHP:")
+  $(m "PHP-FPM (Pool www.conf), Annahme ${PER} MB je Prozess unter Last, ${SHARE}% des RAM, höchstens 8 je CPU-Kern:" "PHP-FPM (pool www.conf), assuming ${PER} MB per process under load, ${SHARE}% of RAM, at most 8 per CPU core:")
     pm = dynamic
     pm.max_children = $CH
     pm.start_servers = $SS
@@ -841,7 +873,8 @@ cat <<EOF
 EOF
 if [ "$DBT" = "mysql" ]; then
   BPS=$((DBSZ*3/2/1048576)); MAXBP=$((RAM*30/100)); [ "$BPS" -gt "$MAXBP" ] && BPS=$MAXBP
-  [ "$BPS" -lt 256 ] && BPS=256; BPS=$(((BPS+127)/128*128))
+  BMIN=256; [ "$RAM" -ge 8192 ] && BMIN=512
+  [ "$BPS" -lt "$BMIN" ] && BPS=$BMIN; BPS=$(((BPS+127)/128*128))
   ILF=$((BPS/4)); [ "$ILF" -lt 64 ] && ILF=64
   cat <<EOF
 
@@ -885,17 +918,21 @@ cat <<EOF
   Redis (redis.conf): maxmemory ${RMX}mb, maxmemory-policy allkeys-lru
 EOF
 if [ "$SYNO" = 1 ]; then
+  SPV=""; [ "$HAVEWEB" = 1 ] && SPV=$(v web.php.version) && SPV=${SPV%.*}
+  case "${FPMVS:-}" in ''|*" "*) ;; *) [ -z "$SPV" ] && SPV=$FPMVS ;; esac
+  [ -z "$SPV" ] && SPV=$CPVMM
+  SPN=$(printf '%s' "$SPV" | tr -d .)
   echo
   if [ "$LNG" = de ]; then
     echo "  Synology-Hinweise: Datenbank und Docker-Volumes möglichst auf SSD/NVMe-Volume legen;"
     echo "  Cron über DSM-Aufgabenplaner (alle 5 Min) als Benutzer '$WEBUSER' ausführen;"
     echo "  bei Web Station die PHP-Werte im PHP-Profil setzen; Cron mit demselben PHP wie das Profil"
-    echo "  starten (z.B. /usr/local/bin/php84 -f $NCPATH/cron.php)."
+    echo "  starten (z.B. /usr/local/bin/php$SPN -f $NCPATH/cron.php)."
   else
     echo "  Synology notes: keep the database and Docker volumes on an SSD/NVMe volume if possible;"
     echo "  run cron via DSM Task Scheduler (every 5 min) as user '$WEBUSER';"
     echo "  with Web Station set PHP values in the PHP profile; start cron with the same PHP as the"
-    echo "  profile (e.g. /usr/local/bin/php84 -f $NCPATH/cron.php)."
+    echo "  profile (e.g. /usr/local/bin/php$SPN -f $NCPATH/cron.php)."
   fi
 fi
 
