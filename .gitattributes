@@ -1,0 +1,3 @@
+* text=auto
+# Shell-Skripte immer mit LF, sonst laufen sie auf Linux/Synology nicht
+*.sh text eol=lf

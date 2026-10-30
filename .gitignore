@@ -1,0 +1,7 @@
+# Berichte von ncperf
+ncperf_*.txt
+
+# Editor/OS
+.DS_Store
+*.swp
+*~

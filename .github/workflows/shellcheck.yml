@@ -1,0 +1,29 @@
+name: ShellCheck
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shells installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dash busybox shellcheck
+
+      - name: ShellCheck (POSIX sh)
+        run: shellcheck -s sh -S warning ncperf.sh
+
+      - name: Syntax mit dash
+        run: dash -n ncperf.sh
+
+      - name: Syntax mit BusyBox sh
+        run: busybox sh -n ncperf.sh
+
+      - name: Hilfe aufrufbar
+        run: sh ncperf.sh --help
