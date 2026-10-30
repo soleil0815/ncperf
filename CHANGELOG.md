@@ -1,34 +1,44 @@
 # Changelog
 
-Alle wichtigen Änderungen an ncperf. Versionsnummern nach [Semantic Versioning](https://semver.org/lang/de/).
+[Deutsch](CHANGELOG.de.md) · **English**
 
-## [1.2.0] – 2026-10-30
+All notable changes to ncperf. Version numbers follow [Semantic Versioning](https://semver.org/).
 
-### Neu
-- Option `-t/--token`: liest über die Nextcloud-App Serverinfo die PHP-Werte, die der Webserver wirklich nutzt (z.B. das PHP-Profil der Synology Web Station).
-- Vergleichstabelle „Web (Profil)“ und „CLI (Cron)“ mit Markierung von Unterschieden.
-- Laufzeitwerte von OPcache und APCu: Füllstand, Trefferquote, Interned-Strings-Puffer, Anzahl gecachter Skripte.
-- Warnung, wenn APCu oder Redis konfiguriert, im Web-Profil aber nicht geladen sind.
-- Warnung, wenn Cron/occ eine andere PHP-Version nutzt als der Webserver.
-- Token alternativ über die Umgebungsvariable `NCPERF_TOKEN`.
+## 1.3.0 – 2026-10-30
 
-### Geändert
-- Projekt heißt jetzt **ncperf** (vorher nc-perfcheck).
+### Added
+- Output in English and German, chosen from the system language (`LANG`), switchable with `-l/--lang de|en` or `NCPERF_LANG`.
+- Option `-V/--version`.
+- Bilingual documentation (`README.md` English, `README.de.md` German).
+
+### Fixed
+- Responses with HTTP error codes (e.g. 401, 404, 500) in the response-time test are no longer rated "OK".
+
+## 1.2.0 – 2026-10-30
+
+### Added
+- Option `-t/--token`: reads the PHP values the web server really uses via the Nextcloud Serverinfo app (e.g. the Synology Web Station PHP profile).
+- Comparison table "Web (profile)" vs. "CLI (cron)" with differences marked.
+- OPcache and APCu runtime values: fill level, hit rate, interned strings buffer, number of cached scripts.
+- Warning when APCu or Redis is configured but not loaded in the web profile.
+- Warning when cron/occ uses a different PHP version than the web server.
+- Token alternatively via the environment variable `NCPERF_TOKEN`.
+
+### Changed
+- The project is now called **ncperf** (formerly nc-perfcheck).
 
 ## 1.1.0 – 2026-10-30
 
-### Geändert
-- Komplett auf POSIX `sh` umgestellt; läuft mit dash, BusyBox ash und bash.
+### Changed
+- Rewritten in POSIX `sh`; runs with dash, BusyBox ash and bash.
 
-### Behoben
-- Falscher Pfad mit `-p` wird klar gemeldet; bei Abbruch wird kein Bericht mehr gespeichert.
+### Fixed
+- A wrong path with `-p` is reported clearly; no report is saved after an abort.
 
 ## 1.0.0 – 2026-10-30
 
-### Neu
-- Erste Version: Prüfung von System, Nextcloud, PHP, PHP-FPM, Datenbank (MariaDB/MySQL, PostgreSQL), Redis und Web-Antwortzeiten.
-- Automatische Erkennung von Docker-Containern und nativen Installationen.
-- Vorschläge für passende Einstellungen anhand von RAM, CPU und Datenbankgröße.
-- Optionaler Speichertest (`--disktest`).
-
-[1.2.0]: https://github.com/soleil0815/ncperf/releases/tag/v1.2.0
+### Added
+- First version: checks system, Nextcloud, PHP, PHP-FPM, database (MariaDB/MySQL, PostgreSQL), Redis and web response times.
+- Automatic detection of Docker containers and native installations.
+- Suggested settings based on RAM, CPU and database size.
+- Optional storage test (`--disktest`).

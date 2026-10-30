@@ -1,228 +1,243 @@
-# ncperf – Performance-Analyse für Nextcloud
+# ncperf – Performance analysis for Nextcloud
 
 [![ShellCheck](https://github.com/soleil0815/ncperf/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/soleil0815/ncperf/actions/workflows/shellcheck.yml)
-[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![POSIX sh](https://img.shields.io/badge/shell-POSIX%20sh-green.svg)
 
-Ein einzelnes Shell-Skript (POSIX `sh`), das eine Nextcloud-Instanz auf Performance prüft und **passende Einstellungen für genau dieses System** vorschlägt.
+[Deutsch](README.de.md) · **English**
 
-- läuft auf **Linux-Servern** und **Synology** (DSM)
-- erkennt **Docker** (offizielles Image, AIO, linuxserver) und **native Installationen** (auch Web Station) selbst
-- braucht keine Bash und keine Zusatzprogramme, nur die übliche Grundausstattung (`awk`, `sed`, `grep`, `curl`)
-- **ändert nichts** am System und schickt keine Daten irgendwohin
+A single shell script (POSIX `sh`) that checks a Nextcloud instance for performance problems and suggests **settings that fit exactly this system**.
+
+- runs on **Linux servers** and **Synology** (DSM)
+- detects **Docker** (official image, AIO, linuxserver) and **native installations** (including Web Station) on its own
+- needs no Bash and no extra tools, just the usual basics (`awk`, `sed`, `grep`, `curl`)
+- **changes nothing** on the system and sends no data anywhere
+- output in **English or German** (chosen automatically from the system language)
 
 ---
 
 ## Installation
 
-Es gibt nichts zu installieren: Das Skript auf den Server bzw. die Synology laden und starten.
+There is nothing to install: download the script to the server or Synology and run it.
 
 ```sh
-# direkt auf dem Server herunterladen
+# download directly on the server
 curl -fsSLO https://raw.githubusercontent.com/soleil0815/ncperf/main/ncperf.sh
 
-# oder per Git
+# or via Git
 git clone https://github.com/soleil0815/ncperf.git && cd ncperf
 ```
 
-Alternativ `ncperf.sh` auf dem eigenen Rechner herunterladen und per `scp` oder über die File Station auf den Server kopieren.
+Alternatively download `ncperf.sh` on your own computer and copy it to the server with `scp` or File Station.
 
-> Wie bei jedem Skript, das mit Root-Rechten läuft: Schau es dir vor dem ersten Start kurz an. Es ist eine einzige, lesbare Datei.
+> As with any script that runs as root: have a quick look at it before the first run. It is a single, readable file.
 
-## Schnellstart
+## Quick start
 
 ```sh
 sudo sh ncperf.sh
 ```
 
-Das war's. Das Skript sucht die Nextcloud selbst, liest die Konfiguration und gibt einen Bericht aus. Gleichzeitig speichert es den Bericht als `ncperf_<Datum>_<Uhrzeit>.txt` im aktuellen Ordner.
+That's it. The script finds Nextcloud by itself, reads its configuration and prints a report. It also saves the report as `ncperf_<date>_<time>.txt` in the current folder.
 
-> **Synology:** Zuerst unter *Systemsteuerung › Terminal & SNMP* den SSH-Dienst aktivieren. Dann per SSH anmelden und `sudo -i` eingeben (Admin-Passwort), anschließend das Skript starten.
+### Language
+
+The output follows the system language (`LANG`): German for `de_*`, English otherwise. To force a language:
+
+```sh
+sudo sh ncperf.sh --lang en      # or --lang de
+# or permanently, e.g. in ~/.profile:
+export NCPERF_LANG=en
+```
+
+> **Synology:** first enable the SSH service under *Control Panel › Terminal & SNMP*. Then log in via SSH, run `sudo -i` (admin password) and start the script.
 
 ---
 
-## Empfohlen: echte Web-PHP-Werte mit Token
+## Recommended: real web PHP values with a token
 
-Ohne weitere Angaben liest das Skript die PHP-Werte der **Kommandozeile**. Das ist das PHP, mit dem auch Cron und `occ` laufen. Die Nextcloud im Browser läuft aber über PHP-FPM bzw. Apache, auf der Synology mit dem **PHP-Profil der Web Station**. Dort können Version, Erweiterungen und Einstellungen ganz anders sein.
+Without further options the script reads the PHP values of the **command line**. That is the PHP that cron and `occ` use. Nextcloud in the browser, however, runs through PHP-FPM or Apache – on Synology with the **Web Station PHP profile**. Version, extensions and settings can be completely different there.
 
-Mit einem Token holt sich das Skript über die Serverinfo-App von Nextcloud die Werte, die der Webserver **wirklich** nutzt. Dazu gehören Laufzeitdaten von OPcache und APCu: wie voll der Speicher ist und wie oft der Cache trifft.
+With a token the script uses Nextcloud's Serverinfo app to fetch the values the web server **really** uses. This includes runtime data from OPcache and APCu: how full the memory is and how often the cache hits.
 
-### 1. Token einmalig setzen
+### 1. Set the token once
 
-Denk dir ein langes, zufälliges Wort aus (z. B. mit `openssl rand -hex 32`). Behandle es wie ein Passwort: Damit lassen sich Serverstatistiken abrufen.
-
-```sh
-# Synology, Nextcloud direkt in der Web Station (PHP-Version und Pfad anpassen):
-sudo -u http /usr/local/bin/php84 /volume1/web/nextcloud/occ config:app:set serverinfo token --value DEINTOKEN
-
-# Linux, native Installation:
-sudo -u www-data php /var/www/nextcloud/occ config:app:set serverinfo token --value DEINTOKEN
-
-# Docker (Containername anpassen):
-sudo docker exec -u www-data nextcloud php occ config:app:set serverinfo token --value DEINTOKEN
-```
-
-Für das Token gibt es kein Feld in der Weboberfläche, es geht nur über `occ`. Falls die Serverinfo-App deaktiviert ist: `occ app:enable serverinfo`.
-
-### 2. Mit Token prüfen
+Pick a long random string (e.g. `openssl rand -hex 32`). Treat it like a password: it grants read access to server statistics.
 
 ```sh
-sudo sh ncperf.sh -t DEINTOKEN
+# Synology, Nextcloud directly in Web Station (adjust PHP version and path):
+sudo -u http /usr/local/bin/php84 /volume1/web/nextcloud/occ config:app:set serverinfo token --value YOURTOKEN
+
+# Linux, native installation:
+sudo -u www-data php /var/www/nextcloud/occ config:app:set serverinfo token --value YOURTOKEN
+
+# Docker (adjust container name):
+sudo docker exec -u www-data nextcloud php occ config:app:set serverinfo token --value YOURTOKEN
 ```
 
-Damit das Token nicht in der Prozessliste auftaucht, geht es auch als Umgebungsvariable:
+There is no field for the token in the web interface; it can only be set with `occ`. If the Serverinfo app is disabled: `occ app:enable serverinfo`.
+
+### 2. Run with the token
 
 ```sh
-sudo NCPERF_TOKEN=DEINTOKEN sh ncperf.sh
+sudo sh ncperf.sh -t YOURTOKEN
 ```
 
-Im PHP-Abschnitt erscheint dann eine Tabelle **Web (Profil)** und **CLI (Cron)**. Unterschiede sind mit `≠` markiert.
+To keep the token out of the process list, pass it as an environment variable instead:
+
+```sh
+sudo NCPERF_TOKEN=YOURTOKEN sh ncperf.sh
+```
+
+The PHP section then shows a table **Web (profile)** vs. **CLI (cron)**. Differences are marked with `≠`.
 
 ---
 
-## Alle Optionen
+## All options
 
-| Option | Bedeutung |
+| Option | Meaning |
 |---|---|
-| `-t, --token TOKEN` | Serverinfo-Token für die echten Web-PHP-Werte (siehe oben), alternativ Umgebungsvariable `NCPERF_TOKEN` |
-| `-u, --url URL` | Adresse der Nextcloud, z. B. `https://cloud.example.de`. Standard ist `overwrite.cli.url` aus der Konfiguration |
-| `-c, --container NAME` | Docker-Container, falls mehrere Nextcloud-Container laufen |
-| `-p, --path PFAD` | Nextcloud-Verzeichnis (dort liegt `occ`), falls es nicht gefunden wird |
-| `--php BINARY` | PHP-Programm für native Installationen, z. B. `/usr/local/bin/php84` |
-| `--disktest` | Zusätzlich die Geschwindigkeit des Speichers im Datenverzeichnis messen |
-| `-o, --output DATEI` | Bericht unter diesem Namen speichern |
-| `--no-report` | Keinen Bericht speichern, nur anzeigen |
-| `-h, --help` | Hilfe anzeigen |
+| `-t, --token TOKEN` | Serverinfo token for the real web PHP values (see above), alternatively environment variable `NCPERF_TOKEN` |
+| `-u, --url URL` | Nextcloud address, e.g. `https://cloud.example.com`. Default is `overwrite.cli.url` from the configuration |
+| `-c, --container NAME` | Docker container, if several Nextcloud containers are running |
+| `-p, --path PATH` | Nextcloud directory (where `occ` lives), if it is not found |
+| `--php BINARY` | PHP binary for native installations, e.g. `/usr/local/bin/php84` |
+| `--disktest` | Additionally measure storage speed in the data directory |
+| `-o, --output FILE` | Save the report under this name |
+| `--no-report` | Do not save a report, only display it |
+| `-l, --lang de\|en` | Output language, alternatively environment variable `NCPERF_LANG` |
+| `-V, --version` | Show version |
+| `-h, --help` | Show help |
 
-### Typische Aufrufe
+### Typical calls
 
 ```sh
-# Synology mit Web Station und PHP 8.4
-sudo sh ncperf.sh --php /usr/local/bin/php84 -t DEINTOKEN
+# Synology with Web Station and PHP 8.4
+sudo sh ncperf.sh --php /usr/local/bin/php84 -t YOURTOKEN
 
-# Docker auf Linux oder Synology, bestimmter Container
-sudo sh ncperf.sh -c nextcloud -t DEINTOKEN
+# Docker on Linux or Synology, specific container
+sudo sh ncperf.sh -c nextcloud -t YOURTOKEN
 
-# Nextcloud an ungewöhnlichem Ort, URL von Hand angeben
-sudo sh ncperf.sh -p /srv/www/cloud -u https://cloud.example.de
+# Nextcloud in an unusual location, URL set manually
+sudo sh ncperf.sh -p /srv/www/cloud -u https://cloud.example.com
 
-# Komplettprüfung inkl. Speichertest
-sudo sh ncperf.sh -t DEINTOKEN --disktest
+# Full check including storage test
+sudo sh ncperf.sh -t YOURTOKEN --disktest
 ```
 
-**Tipp zu `--php`:** Ohne Angabe nimmt das Skript das erste PHP, das es findet, zuerst ein einfaches `php`. Auf der Synology kann das eine andere Version sein als die deines Profils. Welche Versionen installiert sind, zeigt `ls /usr/local/bin/php*`.
+**About `--php`:** without it, the script uses the first PHP it finds, starting with a plain `php`. On Synology this can be a different version than your profile's. `ls /usr/local/bin/php*` shows which versions are installed.
 
-**Tipp zu `-u`:** Steht in `overwrite.cli.url` nur `localhost` oder eine interne Adresse, misst der Test der Antwortzeiten nicht die echte Strecke. Gib dann die Adresse an, unter der du die Nextcloud im Browser öffnest.
+**About `-u`:** if `overwrite.cli.url` only contains `localhost` or an internal address, the response-time test does not measure the real path. Use the address you open Nextcloud with in the browser.
 
 ---
 
-## Was geprüft wird
+## What is checked
 
-| Bereich | Inhalt |
+| Area | Content |
 |---|---|
-| **System** | Betriebssystem bzw. DSM-Version, CPU, RAM, Swap, Last, SSD/HDD, freier Platz im Datenverzeichnis, CPU-Benchmark (mit `--disktest` auch Schreibrate und Kleindatei-Test) |
-| **Nextcloud** | Version, Debug- und Wartungsmodus, Loglevel und Größe der Logdatei, Caches (APCu/Redis), Dateisperren, Redis-Latenz und -Speicher, Hintergrundjobs und letzter Cron-Lauf, Anzahl Apps, Vorschaubilder, eingebaute Selbstprüfung |
-| **PHP** | Version, `memory_limit`, OPcache, JIT, APCu, Erweiterungen, PHP-FPM-Prozesse und -Pool. Mit Token zusätzlich die echten Web-Werte und die Auslastung von OPcache/APCu |
-| **Datenbank** | Typ und Version, Größe, Antwortzeit pro Abfrage. MariaDB/MySQL: Buffer-Pool, Trefferquote, `transaction_isolation`, Binlog, temporäre Tabellen. PostgreSQL: `shared_buffers`, Cache-Trefferquote |
-| **Web** | Antwortzeiten von `status.php` und Login-Seite (je 5 Messungen), HTTP/2, Komprimierung |
+| **System** | OS or DSM version, CPU, RAM, swap, load, SSD/HDD, free space in the data directory, CPU benchmark (with `--disktest` also write speed and small-file test) |
+| **Nextcloud** | Version, debug and maintenance mode, log level and log file size, caches (APCu/Redis), file locking, Redis latency and memory, background jobs and last cron run, number of apps, previews, built-in setup checks |
+| **PHP** | Version, `memory_limit`, OPcache, JIT, APCu, extensions, PHP-FPM processes and pool. With a token also the real web values and OPcache/APCu usage |
+| **Database** | Type and version, size, response time per query. MariaDB/MySQL: buffer pool, hit rate, `transaction_isolation`, binlog, temporary tables. PostgreSQL: `shared_buffers`, cache hit rate |
+| **Web** | Response times of `status.php` and the login page (5 measurements each), HTTP/2, compression |
 
-Die Zugangsdaten für Datenbank und Redis liest das Skript aus der `config.php` und benutzt sie nur lokal. Im Bericht stehen keine Passwörter.
+The script reads the database and Redis credentials from `config.php` and only uses them locally. The report contains no passwords.
 
 ---
 
-## Den Bericht lesen
+## Reading the report
 
-Jede Zeile hat eine Markierung:
+Every line has a marker:
 
-| Markierung | Bedeutung |
+| Marker | Meaning |
 |---|---|
-| `[ OK ]` | passt |
-| `[INFO]` | Hinweis, kein Handlungsbedarf |
-| `[WARN]` | bremst oder ist ungünstig, sollte angepasst werden |
-| `[KRIT]` | bremst deutlich oder ist fehlerhaft, zuerst beheben |
+| `[ OK ]` | fine |
+| `[INFO]` | note, no action needed |
+| `[WARN]` | slows things down or is unfavourable, should be adjusted |
+| `[CRIT]` | slows things down a lot or is broken, fix first (German: `[KRIT]`) |
 
-Am Ende stehen zwei Abschnitte:
+At the end there are two sections:
 
-- **Passende Werte für dieses System:** konkrete Einstellungen für PHP, PHP-FPM, Datenbank, Nextcloud und Redis. Sie sind aus RAM, CPU-Kernen und Datenbankgröße berechnet und lassen sich direkt übernehmen.
-- **Zusammenfassung:** alle Probleme als nummerierte Liste, kritische zuerst. Arbeite sie von oben nach unten ab.
+- **Suggested values for this system:** concrete settings for PHP, PHP-FPM, database, Nextcloud and Redis. They are calculated from RAM, CPU cores and database size and can be applied directly.
+- **Summary:** all problems as a numbered list, critical ones first. Work through it from top to bottom.
 
 ---
 
-## Empfohlenes Vorgehen
+## Recommended workflow
 
-1. **Ist-Zustand messen:** `sudo sh ncperf.sh -t DEINTOKEN`. Den Bericht aufheben.
-2. **Kritische Punkte zuerst** beheben, dann die Warnungen.
-3. **Immer nur wenige Dinge auf einmal ändern**, damit du siehst, was wirkt.
-4. **Dienste neu starten**, sonst misst das Skript die alten Werte:
-   - Synology Web Station: PHP-Profil speichern, Web Station bzw. Dienst neu starten
-   - Linux: `systemctl restart php8.x-fpm` (bzw. Apache), bei Datenbank-Änderungen auch MariaDB/PostgreSQL
+1. **Measure the current state:** `sudo sh ncperf.sh -t YOURTOKEN`. Keep the report.
+2. **Fix critical items first**, then the warnings.
+3. **Change only a few things at a time**, so you can see what helps.
+4. **Restart services**, otherwise the script measures the old values:
+   - Synology Web Station: save the PHP profile, restart Web Station or the service
+   - Linux: `systemctl restart php8.x-fpm` (or Apache), and MariaDB/PostgreSQL after database changes
    - Docker: `docker compose restart`
-5. **Erneut messen** und die Berichte vergleichen, vor allem die Antwortzeiten und die Werte zu OPcache.
+5. **Measure again** and compare the reports, especially response times and OPcache values.
 
-> Laufzeitwerte wie Trefferquoten von OPcache, APCu und Datenbank sind erst aussagekräftig, wenn die Nextcloud nach einem Neustart eine Weile benutzt wurde. Direkt nach dem Neustart sind sie leer bzw. niedrig.
+> Runtime values such as OPcache, APCu and database hit rates only become meaningful once Nextcloud has been used for a while after a restart. Right after a restart they are empty or low.
 
 ---
 
-## Wo man die Werte ändert
+## Where to change the values
 
-| Was | Linux | Synology (Web Station) | Docker (offizielles Image) |
+| What | Linux | Synology (Web Station) | Docker (official image) |
 |---|---|---|---|
-| PHP (Web) | `/etc/php/8.x/fpm/php.ini` bzw. `conf.d/` | *Web Station › Skriptspracheneinstellungen › PHP-Profil bearbeiten* | eigene `.ini` nach `/usr/local/etc/php/conf.d/` mounten oder Umgebungsvariablen wie `PHP_MEMORY_LIMIT` |
-| PHP (Cron/CLI) | `/etc/php/8.x/cli/php.ini` | Cron im *Aufgabenplaner* mit dem richtigen Binary starten, z. B. `/usr/local/bin/php84` | gleich wie Web |
-| PHP-FPM-Pool | `/etc/php/8.x/fpm/pool.d/www.conf` | im PHP-Profil (FPM-Einstellungen) | nur bei FPM-Image: `/usr/local/etc/php-fpm.d/` |
-| Nextcloud | `config/config.php` | `config/config.php` | `config/config.php` im Volume |
-| MariaDB | `/etc/mysql/mariadb.conf.d/` | MariaDB-10-Paket: `/var/packages/MariaDB10/etc/my.cnf` | `command:` oder eigene `.cnf` im DB-Container |
+| PHP (web) | `/etc/php/8.x/fpm/php.ini` or `conf.d/` | *Web Station › Script Language Settings › edit PHP profile* | mount your own `.ini` into `/usr/local/etc/php/conf.d/` or use environment variables such as `PHP_MEMORY_LIMIT` |
+| PHP (cron/CLI) | `/etc/php/8.x/cli/php.ini` | start cron in *Task Scheduler* with the right binary, e.g. `/usr/local/bin/php84` | same as web |
+| PHP-FPM pool | `/etc/php/8.x/fpm/pool.d/www.conf` | in the PHP profile (FPM settings) | FPM image only: `/usr/local/etc/php-fpm.d/` |
+| Nextcloud | `config/config.php` | `config/config.php` | `config/config.php` in the volume |
+| MariaDB | `/etc/mysql/mariadb.conf.d/` | MariaDB 10 package: `/var/packages/MariaDB10/etc/my.cnf` | `command:` or your own `.cnf` in the DB container |
 
-Die Pfade können je nach Distribution und Version leicht abweichen.
-
----
-
-## Häufige Fragen
-
-**„Keine Nextcloud gefunden“**
-Pfad mit `-p` angeben (das Verzeichnis, in dem `occ` liegt) oder den Container mit `-c`.
-
-**„config.php nicht lesbar“ / „PHP-Sammler lieferte keine Daten“**
-Mit `sudo` bzw. als root starten. Bei nativer Installation ggf. das PHP-Programm mit `--php` angeben.
-
-**„Serverinfo lehnt das Token ab“**
-Token prüfen: `occ config:app:get serverinfo token`.
-
-**„Serverinfo unter … nicht erreichbar“**
-Die URL stimmt nicht oder ist vom Server aus nicht erreichbar. Mit `-u` die richtige Adresse angeben.
-
-**„OPcache-Status nicht lesbar“**
-In der PHP-Konfiguration ist `opcache.restrict_api` gesetzt. Dann fehlen nur die Laufzeitwerte, der Rest funktioniert.
-
-**Viele `≠` in der PHP-Tabelle**
-Web-Profil und Kommandozeile sind unterschiedlich eingerichtet. Für die Geschwindigkeit im Browser zählt die Spalte *Web*, für Cron und `occ` die Spalte *CLI*. Wichtig ist vor allem, dass beide dieselbe PHP-Version nutzen und dass die Erweiterungen für die konfigurierten Caches (APCu, Redis) in beiden geladen sind.
-
-**Ändert `--disktest` etwas?**
-Es legt kurz Testdateien im Ordner `.ncperf-tmp` im Datenverzeichnis an (256 MB plus 500 kleine Dateien) und löscht sie sofort wieder. Sonst bleibt alles unverändert.
+Paths may differ slightly depending on distribution and version.
 
 ---
 
-## Voraussetzungen
+## FAQ
 
-- Linux oder Synology DSM 7 mit SSH-Zugang und `sudo`/root
-- Nextcloud mit PHP-Kommandozeile (bei Docker: im Container vorhanden)
-- `curl` für den Test der Antwortzeiten und den Abruf über Serverinfo
-- unterstützte Datenbanken: MariaDB/MySQL, PostgreSQL (SQLite wird erkannt und als Problem gemeldet)
+**"No Nextcloud found"**
+Set the path with `-p` (the directory containing `occ`) or the container with `-c`.
 
-## Fehler melden und mitmachen
+**"config.php not readable" / "PHP collector returned no data"**
+Run with `sudo` or as root. For native installations, set the PHP binary with `--php` if needed.
 
-Fehler, Ideen und Verbesserungen gern als [Issue](https://github.com/soleil0815/ncperf/issues) oder Pull Request.
+**"Serverinfo rejected the token"**
+Check the token: `occ config:app:get serverinfo token`.
 
-Hilfreich bei Fehlermeldungen: System (Linux-Distribution bzw. DSM-Version), Installationsart (Docker, nativ, Web Station) und der Bericht. **Vorher Domain und interne Adressen im Bericht unkenntlich machen.**
+**"Serverinfo not reachable at …"**
+The URL is wrong or not reachable from the server. Set the correct address with `-u`.
 
-Beiträge sollten POSIX-`sh`-kompatibel bleiben (keine Bash-Erweiterungen). Jeder Push wird automatisch mit ShellCheck sowie `dash` und BusyBox `sh` geprüft.
+**"OPcache status not readable"**
+`opcache.restrict_api` is set in the PHP configuration. Only the runtime values are missing then; everything else works.
 
-## Haftung
+**Many `≠` in the PHP table**
+Web profile and command line are configured differently. For browser speed the *Web* column counts, for cron and `occ` the *CLI* column. Most important: both should use the same PHP version, and the extensions for the configured caches (APCu, Redis) should be loaded in both.
 
-Das Skript liest nur und ändert nichts. Die vorgeschlagenen Werte sind Richtwerte, berechnet aus RAM, CPU-Kernen und Datenbankgröße. Prüfe sie vor dem Übernehmen, mach vorher eine Sicherung und teste Änderungen am besten zuerst außerhalb des Produktivbetriebs. Nutzung auf eigene Verantwortung.
+**Does `--disktest` change anything?**
+It briefly creates test files in `.ncperf-tmp` inside the data directory (256 MB plus 500 small files) and deletes them immediately. Nothing else is touched.
 
-## Lizenz
+---
 
-[MIT](LICENSE) – frei nutzbar, veränderbar und weitergebbar, auch kommerziell. Der Lizenzhinweis muss erhalten bleiben.
+## Requirements
 
-*Nextcloud ist eine Marke der Nextcloud GmbH, Synology und DSM sind Marken der Synology Inc. Dieses Projekt steht in keiner Verbindung zu diesen Unternehmen.*
+- Linux or Synology DSM 7 with SSH access and `sudo`/root
+- Nextcloud with PHP CLI (with Docker: available in the container)
+- `curl` for the response-time test and the Serverinfo request
+- supported databases: MariaDB/MySQL, PostgreSQL (SQLite is detected and reported as a problem)
+
+## Reporting bugs and contributing
+
+Bugs, ideas and improvements are welcome as an [issue](https://github.com/soleil0815/ncperf/issues) or pull request – in English or German.
+
+Helpful for bug reports: system (Linux distribution or DSM version), installation type (Docker, native, Web Station) and the report. **Mask your domain and internal addresses in the report first.**
+
+Contributions should stay POSIX `sh` compatible (no Bash extensions). Please add every new message in both languages: `ok "Deutsch" "English"`, and for `warn`/`crit` also the recommendation in both languages. Every push is automatically checked with ShellCheck, `dash` and BusyBox `sh`.
+
+## Disclaimer
+
+The script only reads and changes nothing. The suggested values are guidelines calculated from RAM, CPU cores and database size. Review them before applying, make a backup first and ideally test changes outside of production. Use at your own risk.
+
+## License
+
+[MIT](LICENSE) – free to use, modify and distribute, including commercially. The license notice must be kept.
+
+*Nextcloud is a trademark of Nextcloud GmbH; Synology and DSM are trademarks of Synology Inc. This project is not affiliated with these companies.*

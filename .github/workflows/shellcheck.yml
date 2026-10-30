@@ -25,5 +25,8 @@ jobs:
       - name: Syntax mit BusyBox sh
         run: busybox sh -n ncperf.sh
 
-      - name: Hilfe aufrufbar
-        run: sh ncperf.sh --help
+      - name: Hilfe in beiden Sprachen / help in both languages
+        run: |
+          sh ncperf.sh --lang de --help | grep -q "Optionen"
+          sh ncperf.sh --lang en --help | grep -q "Options"
+          sh ncperf.sh --version
