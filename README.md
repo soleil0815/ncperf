@@ -34,20 +34,38 @@ Alternatively download `ncperf.sh` on your own computer and copy it to the serve
 
 ## Quick start
 
+The script must run **as root or with `sudo`**, otherwise it cannot read the configuration.
+
 ```sh
 sudo sh ncperf.sh
 ```
 
-That's it. The script finds Nextcloud by itself, reads its configuration and prints a report. It also saves the report as `ncperf_<date>_<time>.txt` in the current folder.
+The script finds Nextcloud by itself, reads its configuration and prints a report. It also saves the report as `ncperf_<date>_<time>.txt` in the current folder.
+
+### Recommended call
+
+For meaningful results pass everything explicitly: the token (see [below](#recommended-real-web-php-values-with-a-token)), the PHP binary for native installations, and the language.
+
+```sh
+# Synology with Web Station (adjust PHP version)
+sudo sh ncperf.sh -t YOURTOKEN --php /usr/local/bin/php84 --lang en
+
+# Docker (Linux or Synology)
+sudo sh ncperf.sh -t YOURTOKEN --lang en
+```
+
+> **Careful with environment variables:** `sudo` usually discards the variables of your session. An `NCPERF_TOKEN` or `NCPERF_LANG` set earlier with `export` does **not** reach `sudo sh ncperf.sh`. The script then runs without a token (command-line values only) and in the default language. Put the variables right after `sudo` instead: `sudo NCPERF_TOKEN=YOURTOKEN NCPERF_LANG=en sh ncperf.sh` – or use the options `-t` and `--lang`.
+
+**How to tell that everything arrived:** in the report the PHP section is called **"PHP – web (profile) and CLI (cron/occ)"** and shows a table. If it says "PHP (CLI values – FPM/Apache may differ)" instead, no token was used.
 
 ### Language
 
-The output follows the system language (`LANG`): German for `de_*`, English otherwise. To force a language:
+The output follows the system language (`LANG`): German for `de_*`, English otherwise. Over SSH and with `sudo` the language is often not set. The option is the most reliable way:
 
 ```sh
 sudo sh ncperf.sh --lang en      # or --lang de
-# or permanently, e.g. in ~/.profile:
-export NCPERF_LANG=en
+# or as a variable – right after sudo, not via export:
+sudo NCPERF_LANG=en sh ncperf.sh
 ```
 
 > **Synology:** first enable the SSH service under *Control Panel › Terminal & SNMP*. Then log in via SSH, run `sudo -i` (admin password) and start the script.
@@ -193,6 +211,9 @@ Paths may differ slightly depending on distribution and version.
 ---
 
 ## FAQ
+
+**Wrong language / PHP values don't match my profile**
+Usually the token or language did not arrive, typically because they were set with `export` and `sudo` discarded them. Use the options `-t` and `--lang`, or put the variables right after `sudo` (see [Recommended call](#recommended-call)). For native installations also pass your profile's PHP with `--php`.
 
 **"No Nextcloud found"**
 Set the path with `-p` (the directory containing `occ`) or the container with `-c`.

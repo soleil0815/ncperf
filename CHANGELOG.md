@@ -12,6 +12,7 @@ All notable changes to ncperf. Version numbers follow [Semantic Versioning](http
 - Bilingual documentation (`README.md` English, `README.de.md` German).
 
 ### Fixed
+- Docs: `sudo` discards variables set via `export` (`NCPERF_TOKEN`, `NCPERF_LANG`) – correct call and how to verify added.
 - Responses with HTTP error codes (e.g. 401, 404, 500) in the response-time test are no longer rated "OK".
 
 ## 1.2.0 – 2026-10-30
