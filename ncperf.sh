@@ -1,31 +1,32 @@
 #!/bin/sh
 # =============================================================================
-#  ncperf – Nextcloud performance analysis / Nextcloud-Performance-Analyse
-#  https://github.com/soleil0815/ncperf   ·   License/Lizenz: MIT
+#  ncperf – Nextcloud performance analysis
+#  https://github.com/soleil0815/ncperf   ·   License: MIT
 #
 #  POSIX sh (sh/dash/ash/bash) · Linux & Synology · native or Docker
-#  Read-only: changes nothing on the system. / Ändert nichts am System.
+#  Read-only: changes nothing on the system.
+#  Output in English or German (--lang en|de).
 #
-#  Usage / Aufruf:   sudo sh ncperf.sh [options]      ->  sh ncperf.sh --help
+#  Usage:   sudo sh ncperf.sh [options]      ->  sh ncperf.sh --help
 # =============================================================================
-VERSION="1.3.1"
+VERSION="1.3.2"
 
 CONTAINER=""; NCPATH=""; URL=""; PHPBIN=""; DISKTEST=0; TOKEN="${NCPERF_TOKEN:-}"
 REPORT="ncperf_$(date +%Y%m%d_%H%M).txt"; RUNS=5
 
-# ---------- Sprache / language ----------------------------------------------
+# ---------- Language -----------------------------------------------------------
 case "${NCPERF_LANG:-${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}}" in
   de*|DE*) LNG=de ;;
   *) LNG=en ;;
 esac
-# m DE EN  -> Text in der aktuellen Sprache / text in the current language
+# m DE EN  -> prints the text in the current language
 m() { if [ "$LNG" = de ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }
 
 ESC=$(printf '\033')
 if [ -t 1 ]; then R="${ESC}[31m"; Y="${ESC}[33m"; G="${ESC}[32m"; B="${ESC}[36m"; W="${ESC}[1m"; N="${ESC}[0m"
 else R=""; Y=""; G=""; B=""; W=""; N=""; fi
 
-# die DE EN
+# die DE EN  -> prints an error in the current language and exits
 die() { printf '%s%s:%s %s\n' "$R" "$(m Fehler Error)" "$N" "$(m "$1" "$2")"; [ -n "${TMP:-}" ] && : > "$TMP/failed"; exit 1; }
 need() { [ "$1" -ge 2 ] || die "Option $2 braucht einen Wert." "Option $2 requires a value."; }
 
@@ -110,8 +111,8 @@ TMP=$(mktemp -d 2>/dev/null) || { TMP="/tmp/ncperf.$$"; mkdir -p "$TMP" || exit 
 trap 'rm -rf "$TMP"' EXIT INT TERM
 : > "$TMP/crit"; : > "$TMP/warn"
 
-# ---------- Hilfsfunktionen / helpers ----------------------------------------
-# section DE EN | ok DE EN | info DE EN | warn DE EN [EMPF_DE REC_EN] | crit ...
+# ---------- Helpers --------------------------------------------------------------
+# section DE EN | ok DE EN | info DE EN | warn DE EN [REC_DE REC_EN] | crit ...
 section() { printf '\n%s== %s ==%s\n' "$W" "$(m "$1" "$2")" "$N"; }
 ok()   { printf '  %s[ OK ]%s %s\n' "$G" "$N" "$(m "$1" "$2")"; }
 info() { printf '  %s[INFO]%s %s\n' "$B" "$N" "$(m "$1" "$2")"; }
@@ -122,8 +123,8 @@ crit() { printf '  %s[%s]%s %s\n' "$R" "$(m KRIT CRIT)" "$N" "$(m "$1" "$2")"
 
 is_on()  { case "$1" in 1|on|On|ON|true|True|TRUE|yes|Yes|YES) return 0 ;; esac; return 1; }
 is_num() { case "$1" in ''|-|*[!0-9-]*|?*-*) return 1 ;; esac; return 0; }
-gt()     { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a+0>b+0)}'; }   # a > b (Kommazahlen/decimals)
-# PHP-Kurzschreibweise / PHP shorthand (512M, 1G, 128K, bytes) -> MB ; -1 = unlimited
+gt()     { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a+0>b+0)}'; }   # a > b (works with decimals)
+# PHP shorthand (512M, 1G, 128K, bytes) -> MB ; -1 = unlimited
 to_mb() {
   _s=$(printf '%s' "$1" | tr -d ' ' | tr 'a-z' 'A-Z')
   case "$_s" in
@@ -136,10 +137,10 @@ to_mb() {
   esac
 }
 hum() { awk -v b="${1:-0}" 'BEGIN{split("B KB MB GB TB",u);i=1;while(b>=1024&&i<5){b/=1024;i++};printf "%.1f %s",b,u[i]}'; }
-# Wert aus den gesammelten Daten / value from collected data
+# Read a value from the collected data
 v() { awk -v k="$1" 'index($0,k"=")==1{print substr($0,length(k)+2); exit}' "$TMP/data"; }
 
-# ---------- PHP-Sammler / PHP collector (runs inside the Nextcloud environment)
+# ---------- PHP collector (runs inside the Nextcloud environment) ---------------
 cat > "$TMP/collector.php" <<'PHP'
 <?php
 error_reporting(0); ini_set('display_errors', '0');
@@ -230,7 +231,7 @@ if ($disk && !empty($cfg['datadirectory']) && is_writable($cfg['datadirectory'])
 }
 PHP
 
-# ---------- Serverinfo-Auswertung / serverinfo parser (web PHP) -----------
+# ---------- Serverinfo parser (web PHP values) ----------------------------------
 cat > "$TMP/webparse.php" <<'PHP'
 $j = json_decode($raw, true);
 function out($k, $v) { if (is_bool($v)) $v = $v ? 'true' : 'false'; echo $k, '=', str_replace(["\n", "\r"], ' ', (string)$v), "\n"; }
@@ -269,7 +270,7 @@ PHP
 
 # =============================================================================
 main() {
-# ---------- Umgebung erkennen / detect environment ---------------------------
+# ---------- Detect environment ---------------------------------------------------
 DOCKER=""
 for d in docker /usr/local/bin/docker /usr/bin/docker; do
   if command -v "$d" >/dev/null 2>&1; then DOCKER=$(command -v "$d"); break; fi
@@ -323,7 +324,7 @@ if [ -z "$CONTAINER" ]; then
   fi
 fi
 
-# ---------- Daten sammeln / collect data -------------------------------------
+# ---------- Collect data ---------------------------------------------------------
 printf '%sncperf v%s – Nextcloud Performance-Check%s  –  %s\n' "$W" "$VERSION" "$N" "$(date "$(m '+%d.%m.%Y %H:%M' '+%Y-%m-%d %H:%M')")"
 if [ -n "$CONTAINER" ]; then echo "$(m "Docker-Container: $CONTAINER  |  Pfad: $NCPATH  |  Benutzer: $WEBUSER" "Docker container: $CONTAINER  |  Path: $NCPATH  |  User: $WEBUSER")"
 else echo "$(m "Nativ: $NCPATH  |  PHP: $PHPBIN  |  Benutzer: $WEBUSER" "Native: $NCPATH  |  PHP: $PHPBIN  |  User: $WEBUSER")"; fi
@@ -497,7 +498,7 @@ if [ -n "$(v cfg.redis.host)" ]; then
   fi
 fi
 
-# Hintergrundjobs, Apps, Vorschaubilder / background jobs, apps, previews
+# Background jobs, apps, previews
 BJ=$(occ config:app:get core backgroundjobs_mode); BJ=${BJ:-ajax}
 if [ "$BJ" = "cron" ]; then ok "Hintergrundjobs: cron" "Background jobs: cron"
 else warn "Hintergrundjobs: $BJ" "Background jobs: $BJ" \
@@ -527,7 +528,7 @@ if [ -z "$EP" ] || is_on "$EP"; then
   [ -n "$(v cfg.preview_imaginary_url)" ] && ok "Imaginary für Vorschaubilder aktiv" "Imaginary enabled for previews"
 fi
 
-# Logdatei / log file
+# Log file
 LF=$(v cfg.logfile); [ -z "$LF" ] && LF="${DATADIR}/nextcloud.log"
 LT=$(v cfg.log_type)
 if [ -z "$LT" ] || [ "$LT" = "file" ]; then
@@ -546,7 +547,7 @@ if [ -z "$LT" ] || [ "$LT" = "file" ]; then
   fi
 fi
 
-# Selbstprüfung von Nextcloud / Nextcloud setup checks
+# Nextcloud setup checks
 occ setupchecks > "$TMP/sc"
 if [ -s "$TMP/sc" ]; then
   grep -E '⚠|✗|✘|❌|×' "$TMP/sc" | head -25 > "$TMP/sc2"
@@ -590,7 +591,7 @@ if [ "$HAVEWEB" = 1 ]; then
       "Im PHP-Profil die Erweiterung redis aktivieren." "Enable the redis extension in the PHP profile." ;; esac
     for e in imagick intl gmp bcmath; do is_on "$(v "web.ext.$e")" || info "Web: PHP-Erweiterung '$e' im Profil nicht geladen" "Web: PHP extension '$e' not loaded in the profile"; done
   fi
-  # OPcache zur Laufzeit / at runtime
+  # OPcache at runtime
   OE=$(v web.opcache.enabled)
   if [ "$OE" = "unknown" ]; then info "Web: OPcache-Status nicht lesbar (opcache.restrict_api gesetzt oder OPcache fehlt)" "Web: OPcache status not readable (opcache.restrict_api set or OPcache missing)"
   elif ! is_on "$OE"; then crit "Web: OPcache ist aus" "Web: OPcache is off" \
@@ -621,7 +622,7 @@ if [ "$HAVEWEB" = 1 ]; then
     if is_on "$(v web.jit.on)"; then ok "Web: JIT aktiv ($(v web.jit.mb) MB)" "Web: JIT active ($(v web.jit.mb) MB)"
     else info "Web: JIT aus (optional: opcache.jit=1255, opcache.jit_buffer_size=64M)" "Web: JIT off (optional: opcache.jit=1255, opcache.jit_buffer_size=64M)"; fi
   fi
-  # APCu zur Laufzeit / at runtime
+  # APCu at runtime
   AMB=$(v web.apcu.mb)
   if [ -n "$AMB" ]; then
     AFP=$(v web.apcu.free_pct); AH=$(v web.apcu.hits); AM=$(v web.apcu.misses)
@@ -679,7 +680,7 @@ if awk -v v="${PV%.*}" 'BEGIN{exit !(v+0<8.2)}'; then
   warn "PHP $PV" "PHP $PV" "Auf PHP 8.3/8.4 aktualisieren (spürbar schneller, länger unterstützt)." "Upgrade to PHP 8.3/8.4 (noticeably faster, supported longer)."
 else ok "PHP $PV" "PHP $PV"; fi
 
-# PHP-FPM / Webserver-Prozesse / web server processes
+# PHP-FPM / web server processes
 inx 'for p in /proc/[0-9]*; do c=$(cat $p/comm 2>/dev/null); case "$c" in php-fpm*|apache2|httpd|nginx|frankenphp) echo "$c $(awk "/VmRSS/{print \$2}" $p/status 2>/dev/null)";; esac; done' 2>/dev/null \
   | awk '{n[$1]++; s[$1]+=$2} END{for(k in n) print k, n[k], int(s[k]/n[k])}' > "$TMP/procs"
 FPMR=0
@@ -717,7 +718,7 @@ if [ -s "$TMP/pool" ]; then
          "Raise pm.max_children (see suggestions below) – otherwise requests queue up with several users."; fi
 fi
 
-# ---------- Datenbank / database ---------------------------------------------
+# ---------- Database -------------------------------------------------------------
 section "Datenbank" "Database"
 DBT=$(v cfg.dbtype)
 DBSZ=$(v db.size); is_num "$DBSZ" || DBSZ=0
@@ -830,11 +831,11 @@ EOF
   fi
 fi
 
-# ---------- Vorschläge / suggestions -----------------------------------------
+# ---------- Suggestions ----------------------------------------------------------
 section "Passende Werte für dieses System (${RAM} MB RAM, $CORES Kerne)" "Suggested values for this system (${RAM} MB RAM, $CORES cores)"
 DBLOCAL=1
 case "$(v cfg.dbhost)" in ""|localhost*|127.0.0.1*|/*) ;; *) [ -z "$CONTAINER" ] && DBLOCAL=0 ;; esac
-# Leerlauf-RSS unterschätzt die Last: mind. 100 MB je Prozess ansetzen / idle RSS underestimates load
+# Idle RSS underestimates load: assume at least 100 MB per process
 PER=$((FPMR/1024)); [ "$PER" -lt 100 ] && PER=100
 if [ "$DBLOCAL" = 1 ]; then SHARE=40; else SHARE=60; fi
 CMAX=$((CORES*8)); [ "$CMAX" -lt 16 ] && CMAX=16
@@ -844,7 +845,7 @@ MS=$((CH/2)); [ "$MS" -lt 4 ] && MS=4
 if [ "$RAM" -le 2048 ]; then OPM=128; OPI=16; APCN=32; RMX=128
 elif [ "$RAM" -le 8192 ]; then OPM=256; OPI=32; APCN=64; RMX=256
 else OPM=512; OPI=64; APCN=128; RMX=512; fi
-# aktuelle Werte nie nach unten vorschlagen / never suggest less than the current value
+# Never suggest less than the current value
 maxof() { if is_num "$2" && [ "$2" -gt "$1" ]; then echo "$2"; else echo "$1"; fi; }
 if [ "$HAVEWEB" = 1 ]; then CML=$(v web.memory_limit_mb); COM=$(v web.opcache.mem_mb); COI=$(v web.opcache.str_mb); CAP=$(v web.apcu.mb)
 else CML=$CLIML; COM=$(v ini.opcache.memory_consumption); COI=$(v ini.opcache.interned_strings_buffer); CAP=$(to_mb "$(v ini.apc.shm_size)"); fi
@@ -936,7 +937,7 @@ if [ "$SYNO" = 1 ]; then
   fi
 fi
 
-# ---------- Zusammenfassung / summary ----------------------------------------
+# ---------- Summary --------------------------------------------------------------
 section "Zusammenfassung" "Summary"
 NCRIT=$(grep -c . "$TMP/crit"); NWARN=$(grep -c . "$TMP/warn")
 if [ "$NCRIT" -eq 0 ] && [ "$NWARN" -eq 0 ]; then ok "Keine Probleme gefunden." "No problems found."
@@ -950,7 +951,7 @@ fi
 }
 # =============================================================================
 
-# Befehle in der Nextcloud-Umgebung / commands in the Nextcloud environment
+# Commands inside the Nextcloud environment (container or host)
 inx() { if [ -n "$CONTAINER" ]; then $DOCKER exec "$CONTAINER" sh -c "$1"; else sh -c "$1"; fi; }
 run_php() {
   if [ -n "$CONTAINER" ]; then $DOCKER exec -i -u "$WEBUSER" "$CONTAINER" php -- "$@"

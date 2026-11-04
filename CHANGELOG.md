@@ -1,8 +1,13 @@
 # Changelog
 
-[Deutsch](CHANGELOG.de.md) · **English**
-
 All notable changes to ncperf. Version numbers follow [Semantic Versioning](https://semver.org/).
+
+## 1.3.2 – 2026-11-04
+
+### Changed
+- Repository language is English: code comments, documentation and commit messages. The German `README.de.md` and `CHANGELOG.de.md` were removed.
+- The script output itself stays bilingual (English/German, `--lang en|de`).
+- CI step names and Git config comments in English.
 
 ## 1.3.1 – 2026-10-30
 

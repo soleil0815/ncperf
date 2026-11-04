@@ -1,3 +1,3 @@
 * text=auto
-# Shell-Skripte immer mit LF, sonst laufen sie auf Linux/Synology nicht
+# Shell scripts must always use LF line endings, otherwise they fail on Linux/Synology
 *.sh text eol=lf

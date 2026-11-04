@@ -13,19 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Shells installieren
+      - name: Install shells
         run: sudo apt-get update -qq && sudo apt-get install -y -qq dash busybox shellcheck
 
       - name: ShellCheck (POSIX sh)
         run: shellcheck -s sh -S warning ncperf.sh
 
-      - name: Syntax mit dash
+      - name: Syntax check with dash
         run: dash -n ncperf.sh
 
-      - name: Syntax mit BusyBox sh
+      - name: Syntax check with BusyBox sh
         run: busybox sh -n ncperf.sh
 
-      - name: Hilfe in beiden Sprachen / help in both languages
+      - name: Help in both languages
         run: |
           sh ncperf.sh --lang de --help | grep -q "Optionen"
           sh ncperf.sh --lang en --help | grep -q "Options"

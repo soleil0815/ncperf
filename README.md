@@ -4,15 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![POSIX sh](https://img.shields.io/badge/shell-POSIX%20sh-green.svg)
 
-[Deutsch](README.de.md) · **English**
-
 A single shell script (POSIX `sh`) that checks a Nextcloud instance for performance problems and suggests **settings that fit exactly this system**.
 
 - runs on **Linux servers** and **Synology** (DSM)
 - detects **Docker** (official image, AIO, linuxserver) and **native installations** (including Web Station) on its own
 - needs no Bash and no extra tools, just the usual basics (`awk`, `sed`, `grep`, `curl`)
 - **changes nothing** on the system and sends no data anywhere
-- output in **English or German** (chosen automatically from the system language)
+- output in **English or German** (chosen from the system language, or set with `--lang`)
 
 ---
 
@@ -247,11 +245,11 @@ It briefly creates test files in `.ncperf-tmp` inside the data directory (256 MB
 
 ## Reporting bugs and contributing
 
-Bugs, ideas and improvements are welcome as an [issue](https://github.com/soleil0815/ncperf/issues) or pull request – in English or German.
+Bugs, ideas and improvements are welcome as an [issue](https://github.com/soleil0815/ncperf/issues) or pull request.
 
 Helpful for bug reports: system (Linux distribution or DSM version), installation type (Docker, native, Web Station) and the report. **Mask your domain and internal addresses in the report first.**
 
-Contributions should stay POSIX `sh` compatible (no Bash extensions). Please add every new message in both languages: `ok "Deutsch" "English"`, and for `warn`/`crit` also the recommendation in both languages. Every push is automatically checked with ShellCheck, `dash` and BusyBox `sh`.
+Contributions should stay POSIX `sh` compatible (no Bash extensions). The script prints its messages in German or English, so every new message needs both texts: `ok "German text" "English text"`, and for `warn`/`crit` also the recommendation in both languages. Code comments, docs and commit messages are in English. Every push is automatically checked with ShellCheck, `dash` and BusyBox `sh`.
 
 ## Disclaimer
 
