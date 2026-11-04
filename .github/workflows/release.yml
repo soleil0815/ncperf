@@ -1,0 +1,83 @@
+name: Release
+
+# Creates a GitHub release automatically when the VERSION in ncperf.sh was
+# raised on main: tag vX.Y.Z, notes from CHANGELOG.md, ncperf.sh attached.
+# Runs only after the ShellCheck workflow succeeded for a push to main.
+
+on:
+  workflow_run:
+    workflows: [ShellCheck]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^VERSION="\([0-9][0-9.]*\)"$/\1/p' ncperf.sh)
+          if [ -z "$VERSION" ]; then
+            echo "::error::No VERSION=\"x.y.z\" line found in ncperf.sh"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version in ncperf.sh: $VERSION"
+
+      - name: Check whether the release already exists
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+             || git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Release/tag $TAG already exists – nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract release notes from CHANGELOG.md
+        if: steps.exists.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## " v " ") == 1 || $0 == "## " v { f = 1; next }
+            f && /^## / { exit }
+            f { print }
+          ' CHANGELOG.md | sed '/./,$!d' > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no section '## $VERSION' – add it before raising VERSION."
+            exit 1
+          fi
+          cat notes.md
+
+      - name: Create release
+        if: steps.exists.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create "v$VERSION" ncperf.sh \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "ncperf $VERSION" \
+            --notes-file notes.md \
+            --latest

@@ -251,6 +251,10 @@ Helpful for bug reports: system (Linux distribution or DSM version), installatio
 
 Contributions should stay POSIX `sh` compatible (no Bash extensions). The script prints its messages in German or English, so every new message needs both texts: `ok "German text" "English text"`, and for `warn`/`crit` also the recommendation in both languages. Code comments, docs and commit messages are in English. Every push is automatically checked with ShellCheck, `dash` and BusyBox `sh`.
 
+## Releasing
+
+Releases are created automatically: raise `VERSION` in `ncperf.sh`, add a matching `## X.Y.Z – date` section to `CHANGELOG.md` and push to `main`. Once the ShellCheck workflow has passed, the release workflow creates the tag `vX.Y.Z` and a GitHub release with the changelog section as notes and `ncperf.sh` attached. If the version already has a release, nothing happens.
+
 ## Disclaimer
 
 The script only reads and changes nothing. The suggested values are guidelines calculated from RAM, CPU cores and database size. Review them before applying, make a backup first and ideally test changes outside of production. Use at your own risk.
