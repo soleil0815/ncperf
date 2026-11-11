@@ -1,7 +1,7 @@
 # ncperf – Performance analysis for Nextcloud
 
 [![ShellCheck](https://github.com/soleil0815/ncperf/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/soleil0815/ncperf/actions/workflows/shellcheck.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 ![POSIX sh](https://img.shields.io/badge/shell-POSIX%20sh-green.svg)
 
 A single shell script (POSIX `sh`) that checks a Nextcloud instance for performance problems and suggests **settings that fit exactly this system**.
@@ -261,6 +261,12 @@ The script only reads and changes nothing. The suggested values are guidelines c
 
 ## License
 
-[MIT](LICENSE) – free to use, modify and distribute, including commercially. The license notice must be kept.
+Copyright (C) 2026 soleil0815
+
+ncperf is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (`AGPL-3.0-or-later`).
+
+In short: you may use, study, modify and share ncperf freely, including commercially. If you distribute ncperf or a modified version – or make a modified version available to others over a network – you must do so under the same license, keep the copyright and license notices, and provide the source code of your changes. The full [LICENSE](LICENSE) text is binding; this summary is not legal advice.
+
+Versions up to and including 1.3.2 were released under the MIT License; copies of those versions remain under MIT.
 
 *Nextcloud is a trademark of Nextcloud GmbH; Synology and DSM are trademarks of Synology Inc. This project is not affiliated with these companies.*

@@ -1,7 +1,18 @@
 #!/bin/sh
 # =============================================================================
 #  ncperf – Nextcloud performance analysis
-#  https://github.com/soleil0815/ncperf   ·   License: MIT
+#  https://github.com/soleil0815/ncperf
+#
+#  Copyright (C) 2026 soleil0815
+#  SPDX-License-Identifier: AGPL-3.0-or-later
+#
+#  This program is free software: you can redistribute it and/or modify it
+#  under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or (at your
+#  option) any later version. It is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the LICENSE file
+#  or <https://www.gnu.org/licenses/agpl-3.0.html> for details.
 #
 #  POSIX sh (sh/dash/ash/bash) · Linux & Synology · native or Docker
 #  Read-only: changes nothing on the system.
@@ -9,7 +20,7 @@
 #
 #  Usage:   sudo sh ncperf.sh [options]      ->  sh ncperf.sh --help
 # =============================================================================
-VERSION="1.3.2"
+VERSION="1.4.0"
 
 CONTAINER=""; NCPATH=""; URL=""; PHPBIN=""; DISKTEST=0; TOKEN="${NCPERF_TOKEN:-}"
 REPORT="ncperf_$(date +%Y%m%d_%H%M).txt"; RUNS=5
@@ -100,7 +111,9 @@ while [ $# -gt 0 ]; do
     -t|--token)     need $# "$1"; TOKEN="$2"; shift 2 ;;
     -o|--output)    need $# "$1"; REPORT="$2"; shift 2 ;;
     --no-report)    REPORT=""; shift ;;
-    -V|--version)   echo "ncperf $VERSION"; exit 0 ;;
+    -V|--version)   echo "ncperf $VERSION"
+                    echo "Copyright (C) 2026 soleil0815 · License: AGPL-3.0-or-later"
+                    echo "https://github.com/soleil0815/ncperf"; exit 0 ;;
     -h|--help)      HELP=1; shift ;;
     *) die "Unbekannte Option: $1 (siehe --help)" "Unknown option: $1 (see --help)" ;;
   esac

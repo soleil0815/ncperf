@@ -2,6 +2,12 @@
 
 All notable changes to ncperf. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## 1.4.0 – 2026-11-11
+
+### Changed
+- **License changed from MIT to the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`).** Versions up to and including 1.3.2 remain available under MIT.
+- Copyright and SPDX license header in `ncperf.sh`; `--version` shows copyright and license.
+
 ## 1.3.2 – 2026-11-04
 
 ### Changed
